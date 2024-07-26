@@ -1,0 +1,12 @@
+{
+    "require": {
+        "klein/klein": "dev-master",
+        "aws/aws-sdk-php": "^3.316"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/mkaraki/klein.php"
+        }
+    ]
+}
