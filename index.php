@@ -26,6 +26,13 @@ $klein->respond('/', function ($request, $response, $service, $app) {
 });
 
 $klein->respond('POST', '/f/', function ($request, $response, $service, $app) {
+    if (!isset($_GET['filename']) && empty($_GET['filename']))
+    {
+        $response->json(['error' => 'No file uploaded.']);
+        return;
+    }
+    $fileName = $_GET['filename'];
+
     $id = uniqid(rand(), true);
     
     $s3 = getS3();
@@ -33,6 +40,7 @@ $klein->respond('POST', '/f/', function ($request, $response, $service, $app) {
     $postCommand = $s3->getCommand('PutObject', [
         'Bucket' => S3_BUCKET,
         'Key' => $id,
+        'Tagging' => 'filename=' . $fileName,
     ]);
     $preSignRequest = $s3->createPresignedRequest($postCommand, '+60 minutes');
     try
@@ -84,6 +92,52 @@ $klein->respond('GET', '/f/[:id]', function ($request, $response, $service, $app
 });
 
 $klein->respond('GET', '/d/[:id]', function ($request, $response, $service, $app) {
+    $id = $request->id;
+
+    $s3 = getS3();
+
+    try
+    {
+        $tags = $s3->GetObjectTagging([
+            'Bucket' => S3_BUCKET,
+            'Key' => $id,
+        ]);
+
+        if ($tags['TagSet'][0]['Key'] !== 'filename')
+        {
+            $response->code(404);
+            $response->body('This file isn\'t provide download feature.');
+            return;
+        }
+    }
+    catch (Aws\S3\Exception\S3Exception $e)
+    {
+        $response->code(404);
+        return;
+    }
+
+    $getCommand = $s3->getCommand('GetObject', [
+        'Bucket' => S3_BUCKET,
+        'Key' => $id,
+    ]);
+    $presignedUrl = $s3->createPresignedRequest($getCommand, '+120 minutes');
+    try
+    {
+        $presignedUrl = (string) $presignedUrl->getUri();
+        $service->render('views/download.php', [
+            'id' => $id,
+            'filename' => $tags['TagSet'][0]['Value'],
+            'url' => $presignedUrl,
+        ]);
+    }
+    catch (Exception $e)
+    {
+        $response->code(500);
+        $response->body('An error occurred while generating the download page.');
+    }
+});
+
+$klein->respond('GET', '/v/[:id]', function ($request, $response, $service, $app) {
     $id = $request->id;
 
     $service->render('views/uploaded.php', [

@@ -30,7 +30,9 @@
             }
             const file = files.files[0];
 
-            const uploadUrlQuery = await fetch('/f/', {
+            const fileName = file.name;
+
+            const uploadUrlQuery = await fetch(`/f/?filename=${encodeURIComponent(fileName)}`, {
                 method: 'POST',
             }).catch((err) => {
                 console.error(err);
@@ -64,7 +66,7 @@
             });
 
             if (response.ok) {
-                location.href = `/d/${uploadUrlData.id}`;
+                location.href = `/v/${uploadUrlData.id}`;
             }
             else {
                 alert('An error occurred while uploading the file.');
